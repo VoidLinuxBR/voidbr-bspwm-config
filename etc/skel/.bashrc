@@ -2,8 +2,6 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
-PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/usr/games:/sbin:$HOME/bin"
-
 # If not running interactively, don't do anything
 case $- in
 *i*) ;;
@@ -29,10 +27,10 @@ function get_exit_status() {
 	fi
 }
 
-HISTCONTROL=ignoreboth	# don't put duplicate lines or lines starting with space in the history.
-shopt -s histappend		# append to the history file, don't overwrite it
-HISTSIZE=1000			# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTFILESIZE=2000		# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
+shopt -s histappend    # append to the history file, don't overwrite it
+HISTSIZE=1000          # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTFILESIZE=2000      # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
@@ -62,9 +60,6 @@ esac
 
 if [ -n "$force_color_prompt" ]; then
 	if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-		# We have color support; assume it's compliant with Ecma-48
-		# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-		# a case would tend to support setf rather than setaf.)
 		color_prompt=yes
 	else
 		color_prompt=
@@ -90,9 +85,8 @@ esac
 if [ -x /usr/bin/dircolors ]; then
 	test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
 	alias ls='ls --color=auto'
-	alias dir='dir --color=auto'
+	alias dir='exa --all --long --modified --group --color=auto --'
 	alias vdir='vdir --color=auto'
-
 	alias grep='grep --color=auto'
 	alias fgrep='fgrep --color=auto'
 	alias egrep='egrep --color=auto'
@@ -102,9 +96,9 @@ fi
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 # some more ls aliases
-#alias ll='ls -l'
-#alias la='ls -A'
-#alias l='ls -CF'
+alias ll='ls -l --coloar=auto'
+alias la='ls -lA --color=auto'
+alias l='ls -CF --color=auto'
 
 # Alias definitions.
 # You may want to put all your additions into a separate file like
@@ -126,12 +120,41 @@ if ! shopt -oq posix; then
 	fi
 fi
 
-[ -f ~/.fzf.bash   ] && . ~/.fzf.bash
+# ----- GRC-RS Configuration -----
+# Enable colorized output for various commands
+GRC="/usr/bin/grc"
+if tty -s && [ -n "$TERM" ] && [ "$TERM" != "dumb" ] && command -v "$GRC" >/dev/null; then
+
+	# Define um alias para facilitar a aplicação do grc-rs nos comandos.
+	alias colourify="$GRC"
+
+	# Lista de comandos que serão configurados para saída colorida.
+	commands=(
+		ant blkid configure df diff dig dnf docker-machinels dockerimages dockerinfo
+		dockernetwork dockerps dockerpull dockersearch dockerversion du fdisk
+		findmnt go-test ifconfig iostat_sar ip ipaddr ipneighbor iproute iptables
+		irclog iwconfig kubectl last ldap lolcat lsattr lsblk lsmod lsof lspci
+		lsusb mount mtr mvn netstat nmap ntpdate ping ping2 proftpd pv
+		semanageboolean semanagefcontext semanageuser sensors showmount sockstat
+		ss stat sysctl tcpdump traceroute tune2fs uptime vmstat wdiff yaml
+	)
+
+	# Itera pela lista de comandos e cria um alias apenas se o comando existir.
+	for cmd in "${commands[@]}"; do
+		if command -v "$cmd" >/dev/null; then
+			alias "$cmd"="colourify $cmd"
+		fi
+	done
+
+	# Remove as variáveis temporárias para evitar poluição do ambiente.
+	unset commands cmd
+fi
+
+[ -f ~/.fzf.bash ] && . ~/.fzf.bash
 [ -f ~/.bashrcfull ] && . ~/.bashrcfull
+[ -f /etc/bashrc ] && . /etc/bashrc
 [ -f ~/.bashrckali ] && . ~/.bashrckali
-[ -f /etc/bashrc   ] && . /etc/bashrc
-[ -f ~/.bashrckali ] && . ~/.bashrckali
-#
+
 #if ((EUID != 0)); then
 #	#	export PS1="$green\u$yellow@$cyan\h$red in $reset\w\n#"
 #	#	export PS1="${green}\u${yellow}@${cyan}\h${red}:\w\$(get_exit_status) ${reset}\$ "
@@ -143,8 +166,14 @@ fi
 ##	export PS1="${VIRTUAL_ENV:+($(basename $VIRTUAL_ENV)) }${debian_chroot:+($debian_chroot)}\[\033[01;31m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\] \$(get_exit_status) "
 #	export PS1="${RED}\u@\h${NC}:${BLUE}\w${NC} \$(get_exit_status) "
 #fi
+
 export PS2="\[${yellow}\]→ \[${reset}\]"
 export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+if [ -n "$DISPLAY" ] && [ -e "$HOME/.Xauthority" ]; then
+	export XAUTHORITY=$HOME/.Xauthority
+fi
+stty -ixon
+
 # . /usr/share/blesh/ble.sh
 # . ~/.ps1
 # . ~/.ps1ok
