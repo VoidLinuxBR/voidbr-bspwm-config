@@ -1,3 +1,3 @@
 # voidbr-bspwm-config
 
-Skel config for Void Linux BSPWM Meta Package
+Skel config for VoidBR BSPWM Meta Package
