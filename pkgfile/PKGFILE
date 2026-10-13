@@ -12,36 +12,33 @@ source=("git+${url}.git")
 md5sums=('SKIP')
 makedepends=()
 depends=()
+backup=()
 
 package() {
-	# Verify default folder
-	if [ -d "${srcdir}/${pkgname}/${pkgname}" ]; then
-		InternalDir="${srcdir}/${pkgname}/${pkgname}"
-	elif [ -d "${srcdir}/${pkgname}" ]; then
-		InternalDir="${srcdir}/${pkgname}"
-	else
-		#local
-		InternalDir="${WORKDIR}"
-	fi
+  # Verify default folder
+  if [ -d "${srcdir}/${pkgname}/${pkgname}" ]; then
+    InternalDir="${srcdir}/${pkgname}/${pkgname}"
+  elif [ -d "${srcdir}/${pkgname}" ]; then
+    InternalDir="${srcdir}/${pkgname}"
+  else
+    #local
+    InternalDir="${WORKDIR}"
+  fi
 
-	cd "${InternalDir}"
-	# Copiar a estrutura de /etc, /usr e /opt para /
-	local dirs=("boot" "etc" "opt" "usr" "var")
-	for dir in "${dirs[@]}"; do
-		if [ -d "${InternalDir}/${dir}" ]; then
-			cp -a "${InternalDir}/${dir}" "${pkgdir}/"
-		fi
-	done
+  cd "${InternalDir}"
+  # Copiar a estrutura de /etc, /usr e /opt para /
+  local dirs=("boot" "etc" "opt" "usr" "var")
+  for dir in "${dirs[@]}"; do
+    if [ -d "${InternalDir}/${dir}" ]; then
+      cp -a "${InternalDir}/${dir}" "${pkgdir}/"
+    fi
+  done
 
-	# Install license file if present
-	if [ -f "LICENSE" ]; then
-		install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
-	fi
+  # Install license file if present
+  [ -f "LICENSE" ] && install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  # Install documentation if present
+  [ -f "README.md" ] && install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
 
-	# Install documentation if present
-	if [ -f "README.md" ]; then
-		install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
-	fi
 }
 
 pre_install() {
@@ -49,7 +46,36 @@ pre_install() {
 }
 
 post_install() {
-	log "Finalizando instalação"
+  if [ "${update:-}" = "yes" ]; then
+    log "Finalizando upgrade"
+  else
+    log "Finalizando instalação"
+  fi
+
+	# DESATIVAR AUTOSPAWN DO PULSEAUDIO (usuário)
+	# impede PulseAudio iniciar automaticamente
+	mkdir -p /home/${user}/.config/pulse
+
+	cat >/home/${user}/.config/pulse/client.conf <<EOF
+autospawn = no
+daemon-binary = /bin/true
+EOF
+
+	# configure pipewire
+	mkdir -p /home/${user}/.config/pipewire/pipewire.conf.d
+	ln -sf /usr/share/examples/wireplumber/10-wireplumber.conf \
+		/home/${user}/.config/pipewire/pipewire.conf.d/10-wireplumber.conf
+	ln -sf /usr/share/examples/pipewire/20-pipewire-pulse.conf \
+		/home/${user}/.config/pipewire/pipewire.conf.d/20-pipewire-pulse.conf
+
+	# ---- integração ALSA → PipeWire ----
+	mkdir -p /etc/alsa/conf.d
+	ln -sf /usr/share/alsa/alsa.conf.d/50-pipewire.conf /etc/alsa/conf.d/50-pipewire.conf
+	ln -sf /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf /
+
+  chown $user:$user /home/$user/.config/pipewire -R
+  chown $user:$user /home/$user/.config/pulse -R
+
 }
 
 pre_upgrade() {
@@ -57,5 +83,5 @@ pre_upgrade() {
 }
 
 post_upgrade() {
-	log "Finalizando upgrade"
+	post_install
 }
