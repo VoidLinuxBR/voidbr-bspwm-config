@@ -14,6 +14,14 @@ function run {
 #xrandr --output HDMI2 --mode 1920x1080 --pos 1920x0 --rotate normal --output HDMI1 --primary --mode 1920x1080 --pos 0x0 --rotate normal --output VIRTUAL1 --off
 #autorandr horizontal
 
+# audio: PipeWire (sem systemd, precisa subir junto com a sessao)
+if command -v pipewire >/dev/null && ! pgrep -x -u "$USER" pipewire >/dev/null; then
+  pipewire &
+  sleep 1
+  pgrep -x -u "$USER" wireplumber    >/dev/null || { command -v wireplumber    >/dev/null && wireplumber & }
+  pgrep -x -u "$USER" pipewire-pulse >/dev/null || { command -v pipewire-pulse >/dev/null && pipewire-pulse & }
+fi
+
 $HOME/.config/polybar/launch.sh &
 
 #change your keyboard if you need it
