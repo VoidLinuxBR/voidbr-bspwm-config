@@ -14,12 +14,18 @@ function run {
 #xrandr --output HDMI2 --mode 1920x1080 --pos 1920x0 --rotate normal --output HDMI1 --primary --mode 1920x1080 --pos 0x0 --rotate normal --output VIRTUAL1 --off
 #autorandr horizontal
 
-# audio: PipeWire (sem systemd, precisa subir junto com a sessao)
-if command -v pipewire >/dev/null && ! pgrep -x -u "$USER" pipewire >/dev/null; then
-  pipewire &
-  sleep 1
-  pgrep -x -u "$USER" wireplumber    >/dev/null || { command -v wireplumber    >/dev/null && wireplumber & }
-  pgrep -x -u "$USER" pipewire-pulse >/dev/null || { command -v pipewire-pulse >/dev/null && pipewire-pulse & }
+# audio: mesmo esquema do voidbr-enlightenment-config. O bspwm nao le o
+# ~/.config/autostart (onde o voidbr-base-config poe o pipewire.desktop), entao
+# o voidbr-bspwm-pipewire-start encerra as sobras da sessao anterior e sobe o
+# pipewire, que chama o wireplumber e o pipewire-pulse pelos drop-ins de
+# ~/.config/pipewire/pipewire.conf.d.
+# Roda so na abertura da sessao: o "bspc wm -r" reexecuta o bspwmrc (e este
+# script) com o mesmo PID do bspwm, e nao pode derrubar o audio.
+wmpid=$(pgrep -nx -u "$USER" bspwm)
+audiomark="${XDG_RUNTIME_DIR:-/tmp}/voidbr-bspwm-audio.${USER}.${wmpid}"
+if [ ! -e "$audiomark" ]; then
+  : >"$audiomark"
+  voidbr-bspwm-pipewire-start &
 fi
 
 $HOME/.config/polybar/launch.sh &
@@ -37,25 +43,29 @@ fi
 
 #Some ways to set your wallpaper besides variety or nitrogen
 #feh --bg-scale ~/.config/bspwm/wall.png &
-feh --bg-fill /usr/share/backgrounds/archlinux/arch-wallpaper.jpg &
-feh --bg-fill /usr/share/backgrounds/arcolinux/arco-wallpaper.jpg &
+[ -x "$HOME/.fehbg" ] && "$HOME/.fehbg" &
 #wallpaper for other Arch based systems
 #feh --bg-fill /usr/share/archlinux-tweak-tool/data/wallpaper/wallpaper.png &
 #feh --randomize --bg-fill ~/Dropbox/Apps/Desktoppr/*
 
-dex $HOME/.config/autostart/arcolinux-welcome-app.desktop
 xsetroot -cursor_name left_ptr &
 
 conky -c $HOME/.config/bspwm/system-overview &
-run variety &
 run nm-applet &
-run pamac-tray &
 run xfce4-power-manager &
 numlockx on &
-blueberry-tray &
 picom --config $HOME/.config/bspwm/picom.conf &
-/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
-/usr/lib/xfce4/notifyd/xfce4-notifyd &
+# agente polkit: mate-polkit vem do voidbr-gui-common
+for agent in /usr/libexec/polkit-mate-authentication-agent-1 \
+             /usr/lib/mate-polkit/polkit-mate-authentication-agent-1 \
+             /usr/libexec/polkit-gnome-authentication-agent-1; do
+  if [ -x "$agent" ]; then
+    pgrep -f 'polkit-.*-authentication-agent-1' >/dev/null || "$agent" &
+    break
+  fi
+done
+# notificacoes: dunst (dependencia do voidbr-bspwm)
+run dunst &
 run volumeicon &
 #nitrogen --restore &
 #run caffeine &

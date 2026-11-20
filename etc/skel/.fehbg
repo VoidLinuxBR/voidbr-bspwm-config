@@ -1,2 +1,2 @@
 #!/bin/sh
-feh --no-fehbg --bg-fill '/usr/share/backgrounds/biglinux/abstract-art3.jpg'
+feh --no-fehbg --bg-fill '/usr/share/backgrounds/voidbr/voidbr-wallpaper.avif' 2>/dev/null || hsetroot -solid '#1a1b26'

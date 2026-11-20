@@ -1,0 +1,36 @@
+#!/bin/sh
+# voidbr-bspwm-pipewire-start - inicia o PipeWire no login do BSPWM
+#  (chamado pelo ~/.config/bspwm/autostart.sh; o bspwm não roda sozinho o
+#   ~/.config/autostart, onde o voidbr-base-config põe o pipewire.desktop)
+#  - mesmo esquema do voidbr-pipewire-start do voidbr-enlightenment-config
+#  - no Void (runit) o pipewire, o wireplumber e o pipewire-pulse não terminam
+#    no logout. No login seguinte o pipewire novo acha o socket ocupado e sai
+#    com erro, e o que sobrou da sessão anterior pode ficar sem o
+#    pipewire-pulse (apps sem som, polybar sem volume)
+#  - por isso encerra as sobras deste usuário (e um PulseAudio que tenha
+#    subido) e só então inicia o pipewire, que chama o wireplumber e o
+#    pipewire-pulse pelos drop-ins de ~/.config/pipewire/pipewire.conf.d
+#  - roda só na abertura da sessão: o autostart.sh não chama de novo no
+#    "bspc wm -r"
+
+uid=$(id -u)
+
+# o pipewire-pulse aparece como "pipewire -c pipewire-pulse.conf"
+pkill -u "$uid" -x pulseaudio 2>/dev/null
+pkill -u "$uid" -x pipewire-pulse 2>/dev/null
+pkill -u "$uid" -x wireplumber 2>/dev/null
+pkill -u "$uid" -x pipewire 2>/dev/null
+
+# espera até 2s terminarem; o que não terminar leva SIGKILL
+i=0
+while pgrep -u "$uid" -x 'pipewire|wireplumber|pipewire-pulse|pulseaudio' >/dev/null 2>&1; do
+	i=$((i + 1))
+	if [ "$i" -ge 20 ]; then
+		pkill -9 -u "$uid" -x 'pipewire|wireplumber|pipewire-pulse|pulseaudio' 2>/dev/null
+		sleep 0.2
+		break
+	fi
+	sleep 0.1
+done
+
+exec pipewire
